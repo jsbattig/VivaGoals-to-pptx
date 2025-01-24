@@ -10,8 +10,8 @@ The script reads data from an Excel workbook, processes the data to create slide
 
 1. **Clone the repository** (if applicable):
    ```sh
-   git clone <repository_url>
-   cd <repository_directory>
+   git clone https://github.com/jsbattig/VivaGoals-to-pptx.git
+   cd VivaGoals-to-pptx
    ```
 
 2. **Create a virtual environment** (optional but recommended):
@@ -59,29 +59,6 @@ bizplan.pptx
 
 ```sh
 python Make-Biz-Plan.py --source_workbook VivaGoals.xlsx --template_powerpoint template.pptx --target_bizplan_powerpoint bizplan.pptx --theme_slide_master 0 --theme_slide_master_layout 3 --okr_slide_master 2 --okr_slide_master_layout 11
-```
-
-## Development
-
-### Setting Up the Development Environment
-
-1. **Create a virtual environment**:
-   ```sh
-   python -m venv venv
-   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-   ```
-
-2. **Install the dependencies**:
-   ```sh
-   pip install -r requirements.txt
-   ```
-
-### Running Tests
-
-To run tests, use the following command:
-
-```sh
-pytest
 ```
 
 ## Contributing
