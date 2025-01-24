@@ -1,5 +1,6 @@
 """
-This script transforms an export from Viva Goals into a PowerPoint file with one slide per Viva Goals object.
+This script transforms an export from Viva Goals into a PowerPoint file
+with one slide per Viva Goals object.
 """
 
 from pptx import Presentation
@@ -34,20 +35,22 @@ OKR_SLIDE_MASTER_LAYOUT = 11
 # Global variables
 goals_dict = {}
 
+
 class SquareDimensions:
     def __init__(self, left, top, width, height):
         self.left = Inches(left)
         self.top = Inches(top)
         self.width = Inches(width)
         self.height = Inches(height)
-        
+
+
 class LineDimensions:
     def __init__(self, left, top, width):
         self.left = Inches(left)
         self.top = Inches(top)
         self.width = Inches(width)
 
-# Iterate over each row in the Excel file starting from the second row (first row has headers)
+
 class VivaGoal:
     def __init__(self, row, headers, row_number):
         self.okr_id = row[headers.index('Id')]
@@ -74,11 +77,11 @@ class OKRId:
         else:
             self.okr_link = ""
             self.okr_id = ""
-                    
+
 def flip_bool_attribute(obj, attribute):
     """
     Flip a boolean attribute of an object twice to ensure it remains unchanged.
-    
+
     Args:
         obj (object): The object whose attribute is to be flipped.
         attribute (str): The name of the attribute to be flipped.
@@ -91,13 +94,13 @@ def add_run_with_text(paragraph, text, bold=False, font_size=14):
     """
     Add a run with specified text to a paragraph.
     A "run" is a contiguous run of text with the same formatting within a paragraph.
-    
+
     Args:
         paragraph (Paragraph): The paragraph to which the run is to be added.
         text (str): The text to be added.
         bold (bool, optional): Whether the text should be bold. Defaults to False.
         font_size (int, optional): The font size of the text. Defaults to 14.
-    
+
     Returns:
         Run: The created run object.
     """
@@ -106,11 +109,11 @@ def add_run_with_text(paragraph, text, bold=False, font_size=14):
     run.font.bold = bold
     run.font.size = Pt(font_size)
     return run
-        
+
 def add_paragraph_with_text(text_frame, text, bold=False, font_size=14, level=0, font_color=-1):
     """
     Add a paragraph with specified text to a text frame.
-    
+
     Args:
         text_frame (TextFrame): The text frame to which the paragraph is to be added.
         text (str): The text to be added.
@@ -118,12 +121,12 @@ def add_paragraph_with_text(text_frame, text, bold=False, font_size=14, level=0,
         font_size (int, optional): The font size of the text. Defaults to 14.
         level (int, optional): The level of the paragraph. Defaults to 0.
         font_color (int, optional): The color of the font. Defaults to -1.
-    
+
     Returns:
         Paragraph: The created paragraph object.
     """
     p = text_frame.add_paragraph()
-    run = add_run_with_text(p, text, bold, font_size)    
+    run = add_run_with_text(p, text, bold, font_size)
     if font_color != -1:
         run.font.fill.solid()
         run.font.fill.fore_color.rgb = font_color
@@ -134,11 +137,11 @@ def add_text_block_to_slide(text_frame, text_block_json):
     """
     Add a text block to a slide from a JSON string.
     The motivation of this function is to express content to be adding more descriptively rather than imperatively.
-    
+
     Args:
         text_frame (TextFrame): The text frame to which the text block is to be added.
         text_block_json (str): The JSON string representing the text block.
-    
+
     Raises:
         ValueError: If the first element in the text block is a run.
     """
@@ -153,7 +156,13 @@ def add_text_block_to_slide(text_frame, text_block_json):
                 run.font.fill.solid()
                 run.font.fill.fore_color.rgb = RGBColor(*element['font_color'])
         else:
-            p = add_paragraph_with_text(text_frame, element['text'], element.get('bold', False), element.get('font_size', 14), element.get('level', 0))
+            p = add_paragraph_with_text(
+                text_frame,
+                element['text'],
+                element.get('bold', False),
+                element.get('font_size', 14),
+                element.get('level', 0)
+            )
             if 'font_color' in element:
                 p.font.fill.solid()
                 p.font.fill.fore_color.rgb = RGBColor(*element['font_color'])
@@ -161,26 +170,26 @@ def add_text_block_to_slide(text_frame, text_block_json):
 def get_goal_by_id(okr_id):
     """
     Get a goal by its OKR ID.
-    
+
     Args:
         okr_id (str): The OKR ID of the goal.
-    
+
     Returns:
         VivaGoal: The goal object if found, otherwise None.
     """
     global goals_dict
     try:
-        return goals_dict[okr_id]    
+        return goals_dict[okr_id]
     except KeyError:
         return None
-              
+
 def get_theme_goal_by_id(goals):
     """
     Get the theme goal from a list of goals.
-    
+
     Args:
         goals (list): The list of goal objects.
-    
+
     Returns:
         VivaGoal: The theme goal object if found, otherwise None.
     """
@@ -189,13 +198,13 @@ def get_theme_goal_by_id(goals):
             return goal
     return None
 
-def get_parent_goals_from_alignment(goal):    
+def get_parent_goals_from_alignment(goal):
     """
     Get the parent goals from the alignment string of a goal.
-    
+
     Args:
         goal (VivaGoal): The goal object.
-    
+
     Returns:
         list: A list of parent goal objects.
     """
@@ -214,26 +223,26 @@ def goal_sort_key(goal):
     Theme, [Outcome,] Objective, [Outcome,] Action [, Theme, [Outcome,] Objective, [Outcome,] Action]
     Notice if there's Objective and Outcome linked to the same Theme, Outcome is shown first.
     If there's Outcome and Action linked to the same Objective, Outcome is shown first.
-    
+
     Args:
         goal (VivaGoal): The goal object to be sorted.
-    
+
     Raises:
         ValueError: If more than one parent goal is found in alignment for an outcome or action.
         ValueError: If no parent goal is found in alignment for an action.
         ValueError: If object_type is not one of the valid types (Objective, Outcome, Action).
-    
+
     Returns:
         tuple: A tuple representing the sort key for the goal.
     """
     FIRST_PRIORITY = 0
     SECOND_PRIORITY = 1
-    
+
     # Validate object type
     valid_types = [OBJECTIVE_TYPE, OUTCOME_TYPE, ACTION_TYPE]
     if goal.object_type not in valid_types:
         raise ValueError(f"Invalid object type: {goal.object_type}. Must be one of {valid_types}")
-    
+
     parent_goals = get_parent_goals_from_alignment(goal)
     if goal.object_type == OBJECTIVE_TYPE:
         theme = get_theme_goal_by_id(parent_goals)
@@ -245,15 +254,15 @@ def goal_sort_key(goal):
             return (theme.row_number, FIRST_PRIORITY, goal.row_number) + (FIRST_PRIORITY,) * 2
         if parent_goals and len(parent_goals) > 1:
             raise ValueError("More than one parent goal found in alignment for outcome: " + goal.title)
-        key = goal_sort_key(parent_goals[0])        
+        key = goal_sort_key(parent_goals[0])
         return (*key[:3], FIRST_PRIORITY, goal.row_number)
     elif goal.object_type == ACTION_TYPE:
         if parent_goals is None or len(parent_goals) == 0:
             raise ValueError("No parent goal found in alignment for action: " + goal.title)
         if parent_goals and len(parent_goals) > 1:
             raise ValueError("More than one parent goal found in alignment for action: " + goal.title)
-        key = goal_sort_key(parent_goals[0]) 
-        return (*key[:3], SECOND_PRIORITY, goal.row_number)   
+        key = goal_sort_key(parent_goals[0])
+        return (*key[:3], SECOND_PRIORITY, goal.row_number)
     return (goal.row_number,) + (FIRST_PRIORITY,) * 4  # For root-level Themes the code will get to this point
 
 def get_workbook(workbook_path):
@@ -292,12 +301,12 @@ def load_goals_from_workbook(workbook_path):
 def create_slide(prs, layout_index, title):
     """
     Create a new slide in the presentation with the given layout and title.
-    
+
     Args:
         prs (Presentation): The PowerPoint presentation object.
         layout_index (tuple): A tuple containing the slide master index and layout index.
         title (str): The title of the slide.
-    
+
     Returns:
         Slide: The created slide object.
     """
@@ -313,7 +322,7 @@ def create_slide(prs, layout_index, title):
 def add_goal_details_to_slide(slide, goal):
     """
     Add goal details to the given slide.
-    
+
     Args:
         slide (Slide): The slide object.
         goal (VivaGoal): The goal object containing details to be added to the slide.
@@ -347,7 +356,7 @@ def add_goal_details_to_slide(slide, goal):
 def add_goal_image(slide, goal, image_path):
     """
     Add an image representing the goal type to the given slide.
-    
+
     Args:
         slide (Slide): The slide object.
         goal (VivaGoal): The goal object.
@@ -364,7 +373,7 @@ def add_goal_image(slide, goal, image_path):
 def add_goal_description(slide, goal):
     """
     Add the goal description to the given slide.
-    
+
     Args:
         slide (Slide): The slide object.
         goal (VivaGoal): The goal object.
@@ -386,9 +395,10 @@ def add_goal_description(slide, goal):
     except Exception as e:
         raise ValueError(f"Error adding goal description to slide: {e}")
 
-def main(source_workbook=SOURCE_WORKBOOK, template_powerpoint=TEMPLATE_POWERPOINT, target_bizplan_powerpoint=TARGET_BIZPLAN_POWERPOINT,
-         theme_slide_master=THEME_SLIDE_MASTER, theme_slide_master_layout=THEME_SLIDE_MASTER_LAYOUT,
-         okr_slide_master=OKR_SLIDE_MASTER, okr_slide_master_layout=OKR_SLIDE_MASTER_LAYOUT):
+def main(source_workbook=SOURCE_WORKBOOK, template_powerpoint=TEMPLATE_POWERPOINT,
+         target_bizplan_powerpoint=TARGET_BIZPLAN_POWERPOINT, theme_slide_master=THEME_SLIDE_MASTER,
+         theme_slide_master_layout=THEME_SLIDE_MASTER_LAYOUT, okr_slide_master=OKR_SLIDE_MASTER,
+         okr_slide_master_layout=OKR_SLIDE_MASTER_LAYOUT):
     global goals_dict
     goals, goals_dict = load_goals_from_workbook(source_workbook)
     prs = Presentation(template_powerpoint)
@@ -436,6 +446,7 @@ def main(source_workbook=SOURCE_WORKBOOK, template_powerpoint=TEMPLATE_POWERPOIN
         add_goal_description(slide, goal)
 
     prs.save(target_bizplan_powerpoint)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Transform Viva Goals Excel export into a PowerPoint file.')
