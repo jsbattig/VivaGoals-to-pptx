@@ -1,5 +1,7 @@
 # Make-Biz-Plan
 
+[![Python package](https://github.com/jsbattig/VivaGoals-to-pptx/actions/workflows/python-package.yml/badge.svg)](https://github.com/jsbattig/VivaGoals-to-pptx/actions/workflows/python-package.yml)
+
 This script transforms an Excel export from Viva Goals into a PowerPoint file with one slide per Viva Goals object.
 
 ## Description
