@@ -1,4 +1,6 @@
-# This scripts transforms an export from Viva Goals into a PowerPoint file with one slide per Viva Goals object
+"""
+This script transforms an export from Viva Goals into a PowerPoint file with one slide per Viva Goals object.
+"""
 
 from pptx import Presentation
 from openpyxl import load_workbook
@@ -71,11 +73,30 @@ class OKRId:
             self.okr_id = ""
                     
 def flip_bool_attribute(obj, attribute):
+    """
+    Flip a boolean attribute of an object twice to ensure it remains unchanged.
+    
+    Args:
+        obj (object): The object whose attribute is to be flipped.
+        attribute (str): The name of the attribute to be flipped.
+    """
     original_value = getattr(obj, attribute)
     setattr(obj, attribute, not original_value)
     setattr(obj, attribute, original_value)
 
 def add_run_with_text(paragraph, text, bold=False, font_size=14):
+    """
+    Add a run with specified text to a paragraph.
+    
+    Args:
+        paragraph (Paragraph): The paragraph to which the run is to be added.
+        text (str): The text to be added.
+        bold (bool, optional): Whether the text should be bold. Defaults to False.
+        font_size (int, optional): The font size of the text. Defaults to 14.
+    
+    Returns:
+        Run: The created run object.
+    """
     run = paragraph.add_run()
     run.text = text
     run.font.bold = bold
@@ -83,6 +104,20 @@ def add_run_with_text(paragraph, text, bold=False, font_size=14):
     return run
         
 def add_paragraph_with_text(text_frame, text, bold=False, font_size=14, level=0, font_color=-1):
+    """
+    Add a paragraph with specified text to a text frame.
+    
+    Args:
+        text_frame (TextFrame): The text frame to which the paragraph is to be added.
+        text (str): The text to be added.
+        bold (bool, optional): Whether the text should be bold. Defaults to False.
+        font_size (int, optional): The font size of the text. Defaults to 14.
+        level (int, optional): The level of the paragraph. Defaults to 0.
+        font_color (int, optional): The color of the font. Defaults to -1.
+    
+    Returns:
+        Paragraph: The created paragraph object.
+    """
     p = text_frame.add_paragraph()
     run = add_run_with_text(p, text, bold, font_size)    
     if font_color != -1:
@@ -92,6 +127,16 @@ def add_paragraph_with_text(text_frame, text, bold=False, font_size=14, level=0,
     return p
 
 def add_text_block_to_slide(text_frame, text_block_json):
+    """
+    Add a text block to a slide from a JSON string.
+    
+    Args:
+        text_frame (TextFrame): The text frame to which the text block is to be added.
+        text_block_json (str): The JSON string representing the text block.
+    
+    Raises:
+        ValueError: If the first element in the text block is a run.
+    """
     text_block = json.loads(text_block_json)
     p = None
     for element in text_block['elements']:
@@ -109,6 +154,15 @@ def add_text_block_to_slide(text_frame, text_block_json):
                 p.font.fill.fore_color.rgb = RGBColor(*element['font_color'])
 
 def get_goal_by_id(okr_id):
+    """
+    Get a goal by its OKR ID.
+    
+    Args:
+        okr_id (str): The OKR ID of the goal.
+    
+    Returns:
+        VivaGoal: The goal object if found, otherwise None.
+    """
     global goals_dict
     try:
         return goals_dict[okr_id]    
@@ -116,12 +170,30 @@ def get_goal_by_id(okr_id):
         return None
               
 def get_theme_goal_by_id(goals):
+    """
+    Get the theme goal from a list of goals.
+    
+    Args:
+        goals (list): The list of goal objects.
+    
+    Returns:
+        VivaGoal: The theme goal object if found, otherwise None.
+    """
     for goal in goals:
         if goal.tag == THEME_TAG:
             return goal
     return None
 
 def get_parent_goals_from_alignment(goal):    
+    """
+    Get the parent goals from the alignment string of a goal.
+    
+    Args:
+        goal (VivaGoal): The goal object.
+    
+    Returns:
+        list: A list of parent goal objects.
+    """
     parent_goals = []
     pattern = r"\(weight: \d+(\.\d+)?%, Id: (\d+)\)"
     matches = re.findall(pattern, goal.alignment)
@@ -131,12 +203,25 @@ def get_parent_goals_from_alignment(goal):
             parent_goals.append(parent_goal)
     return parent_goals
 
-# Custom sorting function to ensure goals are showing following this order: 
-# Theme, [Outcome,] Objective, [Outcome,] Action [, Theme, [Outcome,] Objective, [Outcome,] Action]
-# Notice if there's Objective and Outcome linked to the same Theme, Outcome is shown first.
-# If there's Outcome and Action linked to the same Objective, Outcome is shown first.
-# The Tuple returned by this function has the follow form: (first level, first sort modifier, second level, second sort modifier, third level)
 def goal_sort_key(goal):
+    """
+    Custom sorting function to ensure goals are shown in the following order:
+    Theme, [Outcome,] Objective, [Outcome,] Action [, Theme, [Outcome,] Objective, [Outcome,] Action]
+    Notice if there's Objective and Outcome linked to the same Theme, Outcome is shown first.
+    If there's Outcome and Action linked to the same Objective, Outcome is shown first.
+    The tuple returned by this function has the following form: 
+    (first level, first sort modifier, second level, second sort modifier, third level)
+    
+    Args:
+        goal (VivaGoal): The goal object to be sorted.
+    
+    Raises:
+        ValueError: If more than one parent goal is found in alignment for an outcome or action.
+        ValueError: If no parent goal is found in alignment for an action.
+    
+    Returns:
+        tuple: A tuple representing the sort key for the goal.
+    """
     FIRST_PRIORITY = 0
     SECOND_PRIORITY = 1    
     parent_goals = get_parent_goals_from_alignment(goal)
@@ -160,45 +245,72 @@ def goal_sort_key(goal):
         key = goal_sort_key(parent_goals[0]) 
         return (*key[:3], SECOND_PRIORITY, goal.row_number)   
     return (goal.row_number,) + (FIRST_PRIORITY,) * 4  # For root-level Themes the code will get to this point
-    
-def main(source_workbook=SOURCE_WORKBOOK, template_powerpoint=TEMPLATE_POWERPOINT, target_bizplan_powerpoint=TARGET_BIZPLAN_POWERPOINT,
-         theme_slide_master=THEME_SLIDE_MASTER, theme_slide_master_layout=THEME_SLIDE_MASTER_LAYOUT,
-         okr_slide_master=OKR_SLIDE_MASTER, okr_slide_master_layout=OKR_SLIDE_MASTER_LAYOUT):
-    global goals_dict
-    wb = load_workbook(source_workbook)
-    ws = wb.active
 
-    prs = Presentation(template_powerpoint)
+def load_goals_from_workbook(workbook_path):
+    """
+    Load goals from the given Excel workbook.
+    
+    Args:
+        workbook_path (str): Path to the Excel workbook.
+    
+    Returns:
+        tuple: A tuple containing a list of VivaGoal objects and a dictionary mapping OKR IDs to VivaGoal objects.
+    """
+    try:
+        wb = load_workbook(workbook_path)
+        ws = wb.active
+    except Exception as e:
+        raise ValueError(f"Error loading workbook: {e}")
 
     headers = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
-    goals_dict = {OKRId(row[headers.index('Id')]).okr_id: VivaGoal(row, headers, idx) for idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True))}
-    goals = [VivaGoal(row, headers, idx) for idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True))]
-    goals.sort(key=goal_sort_key)
+    goals_dict = {}
+    goals = []
 
-    for goal in goals:    
-        if goal.tag == THEME_TAG:
-            slide_layout = prs.slide_masters[theme_slide_master].slide_layouts[theme_slide_master_layout]  # Choosing a layout for theme that has only a title object
-            slide = prs.slides.add_slide(slide_layout)
+    for idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True)):
+        try:
+            goal = VivaGoal(row, headers, idx)
+            goals_dict[OKRId(row[headers.index('Id')]).okr_id] = goal
+            goals.append(goal)
+        except Exception as e:
+            print(f"Error processing row {idx + 2}: {e}")
 
-            title_shape = slide.shapes.title
-            title_shape.text = goal.title         
-            continue    
+    return goals, goals_dict
 
-        slide_layout = prs.slide_masters[okr_slide_master].slide_layouts[okr_slide_master_layout]  # Choosing a layout for content that has only a title object
+def create_slide(prs, layout_index, title):
+    """
+    Create a new slide in the presentation with the given layout and title.
+    
+    Args:
+        prs (Presentation): The PowerPoint presentation object.
+        layout_index (tuple): A tuple containing the slide master index and layout index.
+        title (str): The title of the slide.
+    
+    Returns:
+        Slide: The created slide object.
+    """
+    try:
+        slide_layout = prs.slide_masters[layout_index[0]].slide_layouts[layout_index[1]]
         slide = prs.slides.add_slide(slide_layout)
-
         title_shape = slide.shapes.title
-        title_shape.text = goal.title
-        
-        # Add textbox for the OKR attributes
-        dimensions = SquareDimensions(left=0.5, top=0.8, width=12, height=3.5)    
+        title_shape.text = title
+        return slide
+    except Exception as e:
+        raise ValueError(f"Error creating slide: {e}")
+
+def add_goal_details_to_slide(slide, goal):
+    """
+    Add goal details to the given slide.
+    
+    Args:
+        slide (Slide): The slide object.
+        goal (VivaGoal): The goal object containing details to be added to the slide.
+    """
+    try:
+        dimensions = SquareDimensions(left=0.5, top=0.8, width=12, height=3.5)
         text_box = slide.shapes.add_textbox(dimensions.left, dimensions.top, dimensions.width, dimensions.height)
         text_frame = text_box.text_frame
         text_frame.word_wrap = True
-        
-        okr_id = OKRId(goal.okr_id) 
 
-        # Text code with the core attributes of the OKR object
         text_block_json = json.dumps({
             "elements": [
                 {"text": "Type: ", "bold": True, "font_size": 18, "level": 1},
@@ -215,75 +327,101 @@ def main(source_workbook=SOURCE_WORKBOOK, template_powerpoint=TEMPLATE_POWERPOIN
                 {"text": goal.status, "font_size": 18, "level": 1, "is_run": True}
             ]
         })
-
-        # Add the text block to the slide
         add_text_block_to_slide(text_frame, text_block_json)
-        
-        # Regular expression to match and remove weight and ID of alignment objective/action
-        pattern = r"\(weight: \d+(\.\d+)?%, Id: \d+\)"
-        cleaned_alignment = re.sub(pattern, "", goal.alignment)
-        
-        if goal.object_type == OBJECTIVE_TYPE:        
-            image_path = OBJECTIVE_IMAGE
-                    
-            parts = cleaned_alignment.split(" / ")
-            alignment = ""
-            mwb = ""
+    except Exception as e:
+        raise ValueError(f"Error adding goal details to slide: {e}")
 
-            for part in parts:
-                if part.startswith("MWB:"):
-                    mwb = part
-                else:
-                    alignment = part
-            if alignment != "":
-                p = add_paragraph_with_text(text_frame, "Parent plan theme: ", True, 18, 1)
-                add_run_with_text(p, alignment, False, 18)
-            if mwb != "":
-                add_paragraph_with_text(text_frame, "")
-                p = add_paragraph_with_text(text_frame, "Parent MWB alignment: ", True, 18, 1, RGBColor(0, 176, 240))               
-                add_run_with_text(p, mwb, False, 18)
-                
-            # Define the position and size of the title rectangle
-            dimensions = SquareDimensions(left=0.5, top=0.3, width=12.5, height=0.75)        
-
-            # Add a dark blue rectangle behind the title when showing Objectives
-            title_rect = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, dimensions.left, dimensions.top, dimensions.width, dimensions.height)
-            title_rect.fill.solid()
-            title_rect.fill.fore_color.rgb = RGBColor(0, 43, 72)  # Blue color
-            title_rect.line.color.rgb = RGBColor(0, 0, 255)  # No border
-            # Send the rectangle to the back of the title object (title came with the template)
-            spTree = slide.shapes._spTree
-            spTree.remove(title_rect._element)
-            spTree.insert(2, title_rect._element)  # Insert at the beginning to send to back
-        else:        
-            p = add_paragraph_with_text(text_frame, "Parent objective: ", True, 18, 1)
-            add_run_with_text(p, cleaned_alignment, False, 18)     
-            if goal.object_type == ACTION_TYPE:
-                image_path = INITIATIVE_IMAGE
-            else:
-                image_path = OUTCOME_IMAGE
-        
-        # Insert image representing the type of OKR object    
-        dimensions = SquareDimensions(left=0.34, top=1.13, width=0.5, height=0.5)    
+def add_goal_image(slide, goal, image_path):
+    """
+    Add an image representing the goal type to the given slide.
+    
+    Args:
+        slide (Slide): The slide object.
+        goal (VivaGoal): The goal object.
+        image_path (str): Path to the image file.
+    """
+    try:
+        dimensions = SquareDimensions(left=0.34, top=1.13, width=0.5, height=0.5)
         pic = slide.shapes.add_picture(image_path, dimensions.left, dimensions.top, dimensions.width, dimensions.height)
+        okr_id = OKRId(goal.okr_id)
         pic.click_action.hyperlink.address = okr_id.okr_link
+    except Exception as e:
+        raise ValueError(f"Error adding goal image to slide: {e}")
 
-        line = LineDimensions(left=0.5, top=4, width=12)    
-        line_shape = slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, line.left, line.top, line.left + line.width, line.top)
+def add_goal_description(slide, goal):
+    """
+    Add the goal description to the given slide.
+    
+    Args:
+        slide (Slide): The slide object.
+        goal (VivaGoal): The goal object.
+    """
+    try:
+        line = LineDimensions(left=0.5, top=4, width=12)
+        slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, line.left, line.top, line.left + line.width, line.top)
 
-        # Add a text box for the description
-        dimensions = SquareDimensions(left=0.5, top=4, width=12, height=3.4)   
+        dimensions = SquareDimensions(left=0.5, top=4, width=12, height=3.4)
         text_box = slide.shapes.add_textbox(dimensions.left, dimensions.top, dimensions.width, dimensions.height)
         text_frame = text_box.text_frame
         add_paragraph_with_text(text_frame, "Description:", bold=True, font_size=18)
         p = add_paragraph_with_text(text_frame, "")
         add_run_with_text(p, goal.description, font_size=14)
-        
+
         text_frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
         text_frame.word_wrap = True
         flip_bool_attribute(text_frame, 'word_wrap')
-        
-    # Save the presentation
+    except Exception as e:
+        raise ValueError(f"Error adding goal description to slide: {e}")
+
+def main(source_workbook=SOURCE_WORKBOOK, template_powerpoint=TEMPLATE_POWERPOINT, target_bizplan_powerpoint=TARGET_BIZPLAN_POWERPOINT,
+         theme_slide_master=THEME_SLIDE_MASTER, theme_slide_master_layout=THEME_SLIDE_MASTER_LAYOUT,
+         okr_slide_master=OKR_SLIDE_MASTER, okr_slide_master_layout=OKR_SLIDE_MASTER_LAYOUT):
+    global goals_dict
+    goals, goals_dict = load_goals_from_workbook(source_workbook)
+    prs = Presentation(template_powerpoint)
+    goals.sort(key=goal_sort_key)
+
+    for goal in goals:
+        if goal.tag == THEME_TAG:
+            slide = create_slide(prs, (theme_slide_master, theme_slide_master_layout), goal.title)
+            continue
+
+        slide = create_slide(prs, (okr_slide_master, okr_slide_master_layout), goal.title)
+        add_goal_details_to_slide(slide, goal)
+
+        cleaned_alignment = re.sub(r"\(weight: \d+(\.\d+)?%, Id: \d+\)", "", goal.alignment)
+        if goal.object_type == OBJECTIVE_TYPE:
+            image_path = OBJECTIVE_IMAGE
+            parts = cleaned_alignment.split(" / ")
+            alignment, mwb = "", ""
+            for part in parts:
+                if part.startswith("MWB:"):
+                    mwb = part
+                else:
+                    alignment = part
+            if alignment:
+                p = add_paragraph_with_text(slide.shapes[-1].text_frame, "Parent plan theme: ", True, 18, 1)
+                add_run_with_text(p, alignment, False, 18)
+            if mwb:
+                add_paragraph_with_text(slide.shapes[-1].text_frame, "")
+                p = add_paragraph_with_text(slide.shapes[-1].text_frame, "Parent MWB alignment: ", True, 18, 1, RGBColor(0, 176, 240))
+                add_run_with_text(p, mwb, False, 18)
+            dimensions = SquareDimensions(left=0.5, top=0.3, width=12.5, height=0.75)
+            title_rect = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, dimensions.left, dimensions.top, dimensions.width, dimensions.height)
+            title_rect.fill.solid()
+            title_rect.fill.fore_color.rgb = RGBColor(0, 43, 72)
+            title_rect.line.color.rgb = RGBColor(0, 0, 255)
+            spTree = slide.shapes._spTree
+            spTree.remove(title_rect._element)
+            spTree.insert(2, title_rect._element)
+        else:
+            p = add_paragraph_with_text(slide.shapes[-1].text_frame, "Parent objective: ", True, 18, 1)
+            add_run_with_text(p, cleaned_alignment, False, 18)
+            image_path = INITIATIVE_IMAGE if goal.object_type == ACTION_TYPE else OUTCOME_IMAGE
+
+        add_goal_image(slide, goal, image_path)
+        add_goal_description(slide, goal)
+
     prs.save(target_bizplan_powerpoint)
 
 if __name__ == "__main__":
