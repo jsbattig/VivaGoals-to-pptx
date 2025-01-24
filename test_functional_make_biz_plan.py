@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from Make_Biz_Plan import *
+from Make_Biz_Plan import main
 
 class MockWorkbook:
     def __init__(self, test_data):
@@ -13,7 +13,7 @@ class MockWorksheet:
         self._current_row = 0
 
     def iter_rows(self, min_row=1, max_row=None, values_only=False):
-        for row in self.test_data[min_row-1:]:
+        for row in self.test_data[min_row - 1:]:
             yield row if values_only else [MagicMock(value=cell) for cell in row]
 
 class MockPresentation:
@@ -102,20 +102,20 @@ class MockShapeCollection:
 class TestEndToEnd(unittest.TestCase):
     def setUp(self):
         self.headers = ['Id', 'Title', 'Tag', 'Owner', 'Period', 'Start Date', 'End Date',
-                       'Description', 'Aligned To (weight, Objective ID)', 'Metric Name',
-                       'Target', 'Object Type', 'Status']
-        
+                        'Description', 'Aligned To (weight, Objective ID)', 'Metric Name',
+                        'Target', 'Object Type', 'Status']
+
         # Basic test data for end-to-end test
         self.test_data = [
             self.headers,
             # Theme 1 hierarchy - standard case
             ['"http://example.com/1" "1"', 'Theme 1', 'Theme', 'John', 'Q1', '2024-01-01', '2024-03-31',
              'Theme Description', '', 'Metric1', '100%', 'Objective', 'On Track'],
-            
+
             # Objective with MWB alignment
             ['"http://example.com/2" "2"', 'Objective 1', '', 'Jane', 'Q1', '2024-01-01', '2024-03-31',
              'Objective Description', '(weight: 100%, Id: 1)', 'Metric2', '50%', 'Objective', 'At Risk'],
-            
+
             # Action linked to objective
             ['"http://example.com/3" "3"', 'Action 1', '', 'Bob', 'Q1', '2024-01-01', '2024-03-31',
              'Action Description', '(weight: 100%, Id: 2)', 'Metric3', '75%', 'Action', 'On Track']
@@ -124,7 +124,7 @@ class TestEndToEnd(unittest.TestCase):
         # Initialize mocks correctly
         self.mock_wb = MockWorkbook(self.test_data)
         self.mock_prs = MockPresentation()
-        
+
         # Store original functions and data
         import Make_Biz_Plan
         self.original_goals_dict = Make_Biz_Plan.goals_dict.copy()
@@ -155,12 +155,12 @@ class TestEndToEnd(unittest.TestCase):
 
         # Verify presentation was created and saved
         self.assertEqual(self.mock_prs.saved_file, 'test_output.pptx')
-        
+
         # Get all slide titles
         slides = self.mock_prs.slides.slides
         actual_titles = [slide.shapes.title.text for slide in slides]
         expected_titles = ['Theme 1', 'Objective 1', 'Action 1']
-        
+
         self.assertEqual(len(slides), len(expected_titles))
         self.assertEqual(actual_titles, expected_titles)
 
@@ -174,27 +174,27 @@ class TestEndToEnd(unittest.TestCase):
             # Theme (1)
             ['"http://example.com/1" "1"', 'Theme 1', 'Theme', 'John', 'Q1', '2024-01-01', '2024-03-31',
              'Theme Description', '', 'Metric1', '100%', 'Objective', 'On Track'],
-            
+
             # Objective under Theme (2)
             ['"http://example.com/2" "2"', 'Objective 1', '', 'Jane', 'Q1', '2024-01-01', '2024-03-31',
              'Objective Description', '(weight: 100%, Id: 1)', 'Metric2', '50%', 'Objective', 'At Risk'],
-            
+
             # First Outcome under Objective (3)
             ['"http://example.com/3" "3"', 'Outcome 1A', '', 'Bob', 'Q1', '2024-01-01', '2024-03-31',
              'First Outcome', '(weight: 100%, Id: 2)', 'Metric3', '75%', 'Outcome', 'On Track'],
-            
+
             # Second Outcome under same Objective (4)
             ['"http://example.com/4" "4"', 'Outcome 1B', '', 'David', 'Q1', '2024-01-01', '2024-03-31',
              'Second Outcome', '(weight: 100%, Id: 2)', 'Metric5', '25%', 'Outcome', 'Behind'],
-            
+
             # Action linked to first Outcome (5)
             ['"http://example.com/5" "5"', 'Action 1A', '', 'Charlie', 'Q1', '2024-01-01', '2024-03-31',
              'First Action', '(weight: 100%, Id: 3)', 'Metric4', '90%', 'Action', 'On Track']
         ]
-        
+
         mock_wb = MockWorkbook(ordering_test_data)
         mock_prs = MockPresentation()
-        
+
         mock_get_workbook.return_value = mock_wb
         mock_presentation.return_value = mock_prs
 
@@ -213,11 +213,9 @@ class TestEndToEnd(unittest.TestCase):
             'Action 1A'
         ]
         actual_titles = [slide.shapes.title.text for slide in slides]
-        
-        self.assertEqual(len(slides), len(expected_titles), 
-                        f"Expected {len(expected_titles)} slides, got {len(slides)}")
-        self.assertEqual(actual_titles, expected_titles,
-                        f"Slide order mismatch.\nExpected: {expected_titles}\nGot: {actual_titles}")
+
+        self.assertEqual(len(slides), len(expected_titles), f"Expected {len(expected_titles)} slides, got {len(slides)}")
+        self.assertEqual(actual_titles, expected_titles, f"Slide order mismatch.\nExpected: {expected_titles}\nGot: {actual_titles}")
 
     @patch('Make_Biz_Plan.Presentation')
     @patch('Make_Biz_Plan.get_workbook')
@@ -226,14 +224,14 @@ class TestEndToEnd(unittest.TestCase):
         # Test data with only invalid object type
         invalid_data = [
             self.headers,
-            ['"http://example.com/1" "1"', 'Invalid Goal', '', 'Eve', 'Q1', 
-             '2024-01-01', '2024-03-31', 'Invalid Description', '', 
+            ['"http://example.com/1" "1"', 'Invalid Goal', '', 'Eve', 'Q1',
+             '2024-01-01', '2024-03-31', 'Invalid Description', '',
              'Metric5', '0%', 'InvalidType', 'On Track']
         ]
-        
+
         mock_wb = MockWorkbook(invalid_data)
         mock_prs = MockPresentation()
-        
+
         mock_get_workbook.return_value = mock_wb
         mock_presentation.return_value = mock_prs
 
@@ -243,6 +241,7 @@ class TestEndToEnd(unittest.TestCase):
                  target_bizplan_powerpoint='test_output.pptx')
 
         self.assertIn("Invalid object type", str(context.exception))
+
 
 if __name__ == '__main__':
     unittest.main()
