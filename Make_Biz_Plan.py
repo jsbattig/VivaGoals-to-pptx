@@ -31,6 +31,9 @@ THEME_SLIDE_MASTER_LAYOUT = 3
 OKR_SLIDE_MASTER = 2
 OKR_SLIDE_MASTER_LAYOUT = 11
 
+# Global variables
+goals_dict = {}
+
 class SquareDimensions:
     def __init__(self, left, top, width, height):
         self.left = Inches(left)
@@ -87,6 +90,7 @@ def flip_bool_attribute(obj, attribute):
 def add_run_with_text(paragraph, text, bold=False, font_size=14):
     """
     Add a run with specified text to a paragraph.
+    A "run" is a contiguous run of text with the same formatting within a paragraph.
     
     Args:
         paragraph (Paragraph): The paragraph to which the run is to be added.
@@ -129,6 +133,7 @@ def add_paragraph_with_text(text_frame, text, bold=False, font_size=14, level=0,
 def add_text_block_to_slide(text_frame, text_block_json):
     """
     Add a text block to a slide from a JSON string.
+    The motivation of this function is to express content to be adding more descriptively rather than imperatively.
     
     Args:
         text_frame (TextFrame): The text frame to which the text block is to be added.
@@ -209,8 +214,6 @@ def goal_sort_key(goal):
     Theme, [Outcome,] Objective, [Outcome,] Action [, Theme, [Outcome,] Objective, [Outcome,] Action]
     Notice if there's Objective and Outcome linked to the same Theme, Outcome is shown first.
     If there's Outcome and Action linked to the same Objective, Outcome is shown first.
-    The tuple returned by this function has the following form: 
-    (first level, first sort modifier, second level, second sort modifier, third level)
     
     Args:
         goal (VivaGoal): The goal object to be sorted.
@@ -218,12 +221,19 @@ def goal_sort_key(goal):
     Raises:
         ValueError: If more than one parent goal is found in alignment for an outcome or action.
         ValueError: If no parent goal is found in alignment for an action.
+        ValueError: If object_type is not one of the valid types (Objective, Outcome, Action).
     
     Returns:
         tuple: A tuple representing the sort key for the goal.
     """
     FIRST_PRIORITY = 0
-    SECOND_PRIORITY = 1    
+    SECOND_PRIORITY = 1
+    
+    # Validate object type
+    valid_types = [OBJECTIVE_TYPE, OUTCOME_TYPE, ACTION_TYPE]
+    if goal.object_type not in valid_types:
+        raise ValueError(f"Invalid object type: {goal.object_type}. Must be one of {valid_types}")
+    
     parent_goals = get_parent_goals_from_alignment(goal)
     if goal.object_type == OBJECTIVE_TYPE:
         theme = get_theme_goal_by_id(parent_goals)
@@ -246,33 +256,36 @@ def goal_sort_key(goal):
         return (*key[:3], SECOND_PRIORITY, goal.row_number)   
     return (goal.row_number,) + (FIRST_PRIORITY,) * 4  # For root-level Themes the code will get to this point
 
+def get_workbook(workbook_path):
+    """Helper function to load a workbook - makes mocking easier"""
+    return load_workbook(workbook_path)
+
 def load_goals_from_workbook(workbook_path):
-    """
-    Load goals from the given Excel workbook.
-    
-    Args:
-        workbook_path (str): Path to the Excel workbook.
-    
-    Returns:
-        tuple: A tuple containing a list of VivaGoal objects and a dictionary mapping OKR IDs to VivaGoal objects.
-    """
+    """Load goals from the given Excel workbook."""
     try:
-        wb = load_workbook(workbook_path)
+        wb = get_workbook(workbook_path)
         ws = wb.active
     except Exception as e:
         raise ValueError(f"Error loading workbook: {e}")
 
     headers = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
-    goals_dict = {}
     goals = []
+    local_goals_dict = {}
 
     for idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True)):
         try:
             goal = VivaGoal(row, headers, idx)
-            goals_dict[OKRId(row[headers.index('Id')]).okr_id] = goal
+            okr_id = OKRId(goal.okr_id).okr_id  # Extract ID from the OKR string
+            local_goals_dict[okr_id] = goal
             goals.append(goal)
         except Exception as e:
             print(f"Error processing row {idx + 2}: {e}")
+            continue  # Skip invalid rows
+
+    # Update global dictionary
+    global goals_dict
+    goals_dict.clear()
+    goals_dict.update(local_goals_dict)
 
     return goals, goals_dict
 

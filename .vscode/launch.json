@@ -5,16 +5,37 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Current File",
+            "name": "Python: Make Business Plan",
             "type": "debugpy",
             "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",            
+            "program": "${workspaceFolder}/Make_Biz_Plan.py",
             "args": [
                 "--source_workbook", "VivaGoals.xlsx",
                 "--template_powerpoint", "template.pptx",
-                "--target_bizplan_powerpoint", "target bizplan.pptx"
-            ] 
+                "--target_bizplan_powerpoint", "bizplan.pptx"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Python: Run Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "unittest",
+            "args": [
+                "test_make_biz_plan.py",
+                "-v"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Python: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ]
 }
