@@ -269,29 +269,28 @@ def get_workbook(workbook_path):
     """Helper function to load a workbook - makes mocking easier"""
     return load_workbook(workbook_path)
 
+def create_goal(row, headers, idx):
+    """Create a single goal object from a row of data."""
+    goal = VivaGoal(row, headers, idx)
+    okr_id = OKRId(goal.okr_id).okr_id
+    return okr_id, goal
+
 def load_goals_from_workbook(workbook_path):
     """Load goals from the given Excel workbook."""
-    try:
-        wb = get_workbook(workbook_path)
-        ws = wb.active
-    except Exception as e:
-        raise ValueError(f"Error loading workbook: {e}")
-
+    wb = get_workbook(workbook_path)
+    ws = wb.active
     headers = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
     goals = []
     local_goals_dict = {}
 
     for idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True)):
         try:
-            goal = VivaGoal(row, headers, idx)
-            okr_id = OKRId(goal.okr_id).okr_id  # Extract ID from the OKR string
+            okr_id, goal = create_goal(row, headers, idx)
             local_goals_dict[okr_id] = goal
             goals.append(goal)
         except Exception as e:
             print(f"Error processing row {idx + 2}: {e}")
-            continue  # Skip invalid rows
 
-    # Update global dictionary
     global goals_dict
     goals_dict.clear()
     goals_dict.update(local_goals_dict)
@@ -304,7 +303,7 @@ def create_slide(prs, layout_index, title):
 
     Args:
         prs (Presentation): The PowerPoint presentation object.
-        layout_index (tuple): A tuple containing the slide master index and layout index.
+        layout_index (tuple): A tuple containing the slide primary index and layout index.
         title (str): The title of the slide.
 
     Returns:
