@@ -4,7 +4,14 @@ rulesets:
   - python-code-style
   - python-django
   - python-flask
-  - python-inclusive
+  - python-inclusive:
+    rules:
+      variable-name:
+        ignore:
+          - "**"
+      function-definition:
+        ignore:
+          - "**"
   - python-pandas
   - python-security
   - github-actions

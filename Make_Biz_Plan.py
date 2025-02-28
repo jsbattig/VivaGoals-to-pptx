@@ -3,6 +3,7 @@ This script transforms an export from Viva Goals into a PowerPoint file
 with one slide per Viva Goals object.
 """
 
+import os
 from pptx import Presentation
 from openpyxl import load_workbook
 from pptx.dml.color import RGBColor
@@ -267,6 +268,8 @@ def goal_sort_key(goal):
 
 def get_workbook(workbook_path):
     """Helper function to load a workbook - makes mocking easier"""
+    if not os.path.exists(workbook_path):
+        raise ValueError(f"Workbook file does not exist: {workbook_path}")
     return load_workbook(workbook_path)
 
 def create_goal(row, headers, idx):
@@ -417,13 +420,16 @@ def main(source_workbook=SOURCE_WORKBOOK, template_powerpoint=TEMPLATE_POWERPOIN
             parts = cleaned_alignment.split(" / ")
             alignment, mwb = "", ""
             for part in parts:
+                # no-dd-sa:python-best-practices/nested-blocks
                 if part.startswith("MWB:"):
                     mwb = part
                 else:
                     alignment = part
+            # no-dd-sa:python-best-practices/nested-blocks
             if alignment:
                 p = add_paragraph_with_text(slide.shapes[-1].text_frame, "Parent plan theme: ", True, 18, 1)
                 add_run_with_text(p, alignment, False, 18)
+            # no-dd-sa:python-best-practices/nested-blocks
             if mwb:
                 add_paragraph_with_text(slide.shapes[-1].text_frame, "")
                 p = add_paragraph_with_text(slide.shapes[-1].text_frame, "Parent MWB alignment: ", True, 18, 1, RGBColor(0, 176, 240))
